@@ -1,13 +1,12 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Post, TagType } from '@/types/post';
 import { Reply } from '@/types/reply';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from '@/components/ui/use-toast';
-import { 
-  getPosts, 
-  createPost, 
-  updatePullingUp, 
+import {
+  getPosts,
+  createPost,
+  updatePullingUp,
   updateFade,
   getReplies,
   createReply,
@@ -27,6 +26,10 @@ interface PostContextType {
   addReplyToPost: (postId: string, message: string) => void;
   incrementReplyPullingUp: (replyId: string) => void;
   incrementReplyFade: (replyId: string) => void;
+
+  isRepliesShown: (postId: string) => boolean;
+  toggleRepliesForPost: (postId: string) => void;
+  setRepliesForPost: (postId: string, show: boolean) => void;
 }
 
 const PostContext = createContext<PostContextType | undefined>(undefined);
@@ -48,6 +51,24 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refetchInterval: 60000,
   });
 
+  const [showRepliesMap, setShowRepliesMap] = useState<{ [postId: string]: boolean }>({});
+
+  const isRepliesShown = (postId: string) => !!showRepliesMap[postId];
+
+  const toggleRepliesForPost = (postId: string) => {
+    setShowRepliesMap(prev => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  const setRepliesForPost = (postId: string, show: boolean) => {
+    setShowRepliesMap(prev => ({
+      ...prev,
+      [postId]: show,
+    }));
+  };
+
   const addPostMutation = useMutation({
     mutationFn: (newPost: Omit<Post, 'id'>) => createPost(newPost),
     onSuccess: () => {
@@ -68,7 +89,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const updatePullingUpMutation = useMutation({
-    mutationFn: ({ postId, currentCount }: { postId: string; currentCount: number }) => 
+    mutationFn: ({ postId, currentCount }: { postId: string; currentCount: number }) =>
       updatePullingUp(postId, currentCount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -84,7 +105,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const updateFadeMutation = useMutation({
-    mutationFn: ({ postId, currentCount }: { postId: string; currentCount: number }) => 
+    mutationFn: ({ postId, currentCount }: { postId: string; currentCount: number }) =>
       updateFade(postId, currentCount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -119,7 +140,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const updateReplyPullingUpMutation = useMutation({
-    mutationFn: ({ replyId, currentCount }: { replyId: string; currentCount: number }) => 
+    mutationFn: ({ replyId, currentCount }: { replyId: string; currentCount: number }) =>
       updateReplyPullingUp(replyId, currentCount),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['replies', data.post_id] });
@@ -135,7 +156,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const updateReplyFadeMutation = useMutation({
-    mutationFn: ({ replyId, currentCount }: { replyId: string; currentCount: number }) => 
+    mutationFn: ({ replyId, currentCount }: { replyId: string; currentCount: number }) =>
       updateReplyFade(replyId, currentCount),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['replies', data.post_id] });
@@ -159,27 +180,27 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pullingUp: 0,
       fade: 0
     };
-    
+
     addPostMutation.mutate(newPost);
   };
 
   const incrementPullingUp = (postId: string) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
-    
-    updatePullingUpMutation.mutate({ 
-      postId, 
-      currentCount: post.pullingUp 
+
+    updatePullingUpMutation.mutate({
+      postId,
+      currentCount: post.pullingUp
     });
   };
 
   const incrementFade = (postId: string) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
-    
-    updateFadeMutation.mutate({ 
-      postId, 
-      currentCount: post.fade 
+
+    updateFadeMutation.mutate({
+      postId,
+      currentCount: post.fade
     });
   };
 
@@ -200,7 +221,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pullingup: 0,
       fade: 0
     };
-    
+
     addReplyMutation.mutate(newReply);
   };
 
@@ -217,8 +238,8 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }).then(data => {
       if (data) {
-        updateReplyPullingUpMutation.mutate({ 
-          replyId, 
+        updateReplyPullingUpMutation.mutate({
+          replyId,
           currentCount: data.pullingup || 0
         });
       }
@@ -238,33 +259,36 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }).then(data => {
       if (data) {
-        updateReplyFadeMutation.mutate({ 
-          replyId, 
+        updateReplyFadeMutation.mutate({
+          replyId,
           currentCount: data.fade || 0
         });
       }
     });
   };
 
-  const isRepliesLoading = 
-    addReplyMutation.isPending || 
-    updateReplyPullingUpMutation.isPending || 
+  const isRepliesLoading =
+    addReplyMutation.isPending ||
+    updateReplyPullingUpMutation.isPending ||
     updateReplyFadeMutation.isPending;
 
   return (
-    <PostContext.Provider value={{ 
-      posts, 
-      addPost, 
+    <PostContext.Provider value={{
+      posts,
+      addPost,
       incrementPullingUp,
-      incrementFade, 
-      loading: loading || addPostMutation.isPending || 
-              updatePullingUpMutation.isPending || 
-              updateFadeMutation.isPending ||
-              isRepliesLoading,
+      incrementFade,
+      loading: loading || addPostMutation.isPending ||
+               updatePullingUpMutation.isPending ||
+               updateFadeMutation.isPending ||
+               isRepliesLoading,
       getRepliesForPost,
       addReplyToPost,
       incrementReplyPullingUp,
-      incrementReplyFade
+      incrementReplyFade,
+      isRepliesShown,
+      toggleRepliesForPost,
+      setRepliesForPost,
     }}>
       {children}
     </PostContext.Provider>

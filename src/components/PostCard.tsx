@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Post } from '@/types/post';
 import { Button } from '@/components/ui/button';
@@ -17,20 +16,29 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post }: PostCardProps) => {
-  const { incrementPullingUp, incrementFade, getRepliesForPost } = usePostContext();
+  const {
+    incrementPullingUp,
+    incrementFade,
+    getRepliesForPost,
+    isRepliesShown,
+    toggleRepliesForPost,
+    setRepliesForPost
+  } = usePostContext();
+
   const [isReplying, setIsReplying] = useState(false);
-  const [showReplies, setShowReplies] = useState(false);
   const isMobile = useIsMobile();
-  
+
+  const showReplies = isRepliesShown(post.id);
+
   const { data: replies = [] } = useQuery({
     queryKey: ['replies', post.id],
     queryFn: () => getRepliesForPost(post.id),
   });
-  
+
   const handlePullingUp = () => {
     incrementPullingUp(post.id);
   };
-  
+
   const handleFade = () => {
     incrementFade(post.id);
   };
@@ -38,14 +46,10 @@ const PostCard = ({ post }: PostCardProps) => {
   const toggleReplying = () => {
     setIsReplying(!isReplying);
     if (!isReplying && !showReplies) {
-      setShowReplies(true);
+      setRepliesForPost(post.id, true);
     }
   };
-  
-  const toggleReplies = () => {
-    setShowReplies(!showReplies);
-  };
-  
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-4">
       <div className="flex justify-between items-start mb-2">
@@ -53,16 +57,16 @@ const PostCard = ({ post }: PostCardProps) => {
           {formatDistanceToNow(post.timestamp, { addSuffix: true })}
         </div>
       </div>
-      
+
       <p className="text-lg font-medium mb-2">{post.message}</p>
-      
+
       {post.location && (
         <div className="flex items-center text-sm text-gray-600 mb-2">
           <MapPin className="h-4 w-4 mr-1" />
           <span>{post.location}</span>
         </div>
       )}
-      
+
       {post.tags && post.tags.length > 0 && (
         <div className="mb-4">
           {post.tags.map(tag => (
@@ -70,11 +74,11 @@ const PostCard = ({ post }: PostCardProps) => {
           ))}
         </div>
       )}
-      
+
       <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-between items-center'} mt-2`}>
         <div className="flex gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             className="border-cornell-red text-cornell-red hover:bg-cornell-red/10 flex items-center gap-1"
             onClick={handlePullingUp}
@@ -87,9 +91,9 @@ const PostCard = ({ post }: PostCardProps) => {
               </span>
             )}
           </Button>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             size="sm"
             className="border-gray-500 text-gray-500 hover:bg-gray-500/10 flex items-center gap-1"
             onClick={handleFade}
@@ -106,16 +110,16 @@ const PostCard = ({ post }: PostCardProps) => {
 
         <div className="flex items-center gap-2">
           {replies.length > 0 && (
-            <Badge 
-              variant="secondary" 
-              className="flex items-center gap-1"
-              onClick={toggleReplies}
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 cursor-pointer"
+              onClick={() => toggleRepliesForPost(post.id)}
             >
               <MessageCircle className="h-3 w-3" />
               {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
             </Badge>
           )}
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -129,15 +133,19 @@ const PostCard = ({ post }: PostCardProps) => {
       </div>
 
       {isReplying && (
-        <ReplyForm 
-          postId={post.id} 
-          onCancel={() => setIsReplying(false)} 
+        <ReplyForm
+          postId={post.id}
+          onCancel={() => setIsReplying(false)}
         />
       )}
 
       {showReplies && (
         <div className="mt-3">
-          <ReplyList postId={post.id} expanded={showReplies} setExpanded={setShowReplies} />
+          <ReplyList
+            postId={post.id}
+            expanded={showReplies}
+            setExpanded={(val) => setRepliesForPost(post.id, val)}
+          />
         </div>
       )}
     </div>
