@@ -137,7 +137,7 @@ const PostCard = ({ post }: PostCardProps) => {
 
       {showReplies && (
         <div className="mt-3">
-          <ReplyList postId={post.id} />
+          <ReplyList postId={post.id} expanded={showReplies} setExpanded={setShowReplies} />
         </div>
       )}
     </div>
